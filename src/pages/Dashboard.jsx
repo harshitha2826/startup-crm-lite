@@ -85,9 +85,9 @@ const Dashboard = () => {
   const leads = contextLeads && contextLeads.length > 0 ? contextLeads : sampleLeads;
 
   // Compute stats metrics dynamically
-  const activeLeads = leads.filter(l => l.stage !== 'Won' && l.stage !== 'Lost');
+  const activeLeads = leads.filter(l => (l.status || l.stage) !== 'Won' && (l.status || l.stage) !== 'Lost');
   const pipelineValue = activeLeads.reduce((acc, l) => acc + l.value, 0);
-  const closedWon = leads.filter(l => l.stage === 'Won').length;
+  const closedWon = leads.filter(l => (l.status || l.stage) === 'Won').length;
 
   // Handlers for quick actions shortcuts
   const handleAddLead = () => {

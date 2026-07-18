@@ -56,7 +56,7 @@ const Leads = () => {
 
   // Calculate Metrics for Leads page header
   const totalValue = filteredLeads.reduce((sum, lead) => sum + (Number(lead.value) || 0), 0);
-  const activeCount = filteredLeads.filter(l => l.stage !== 'Won' && l.stage !== 'Lost').length;
+  const activeCount = filteredLeads.filter(l => (l.status || l.stage) !== 'Won' && (l.status || l.stage) !== 'Lost').length;
 
   // Open modal for Create Mode
   const handleAddClick = () => {

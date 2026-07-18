@@ -27,7 +27,7 @@ const PipelineOverview = ({ leads = [] }) => {
 
   // Compute counts and ratios for each stage
   const stagesCalculated = stagesConfig.map((stage) => {
-    const count = leads.filter((l) => l.stage === stage.name).length;
+    const count = leads.filter((l) => (l.status || l.stage) === stage.name).length;
     const percentage = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0;
     return {
       ...stage,

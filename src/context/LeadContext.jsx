@@ -1,28 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import useLocalStorage from '../hooks/useLocalStorage';
-import { sampleLeads } from '../data/sampleLeads';
+import { toast } from 'react-hot-toast';
+import leadService from '../services/leadService';
 import { LEAD_STAGES, PRIORITIES, TEMPERATURES, DEFAULT_LEAD_OWNER } from '../constants';
-
-/**
- * Lead object type definition (TypeScript-style schema).
- * @typedef {Object} Lead
- * @property {string} id - Unique identifier (crypto.randomUUID or timestamp string).
- * @property {string} name - Contact person's name.
- * @property {string} company - Organization/company name.
- * @property {string} email - Contact email address.
- * @property {string} phone - Contact phone number.
- * @property {'New' | 'Contacted' | 'Meeting Scheduled' | 'Proposal Sent' | 'Won' | 'Lost'} status - Lead stage status.
- * @property {'New' | 'Contacted' | 'Meeting Scheduled' | 'Proposal Sent' | 'Won' | 'Lost'} stage - Duplicate mapping for backward-compatibility.
- * @property {'Website' | 'Referral' | 'LinkedIn' | 'Cold Call' | 'Email Campaign' | 'Other'} source - Lead acquisition source.
- * @property {string} createdAt - ISO Date string.
- * @property {number} value - Deal contract value.
- * @property {string} [priority] - Deal priority ('High' | 'Medium' | 'Low').
- * @property {string} [temperature] - Deal temperature ('Hot' | 'Warm' | 'Cold').
- * @property {string} [owner] - Sales executive owner assignment.
- * @property {string} [notes] - Context and initial summary notes.
- * @property {Array<Object>} [history] - Activities updates feed.
- */
+import { useAuth } from './AuthContext';
 
 const LeadContext = createContext(null);
 
@@ -31,25 +12,23 @@ const initialTasks = [
   { id: 'task-2', text: 'Review Vercel contract draft for Elena Rostova', completed: false, dueDate: 'Today', priority: PRIORITIES.HIGH },
   { id: 'task-3', text: 'Send customized pricing pitch deck to Aris Thorne (Retool)', completed: false, dueDate: 'Tomorrow', priority: PRIORITIES.MEDIUM },
   { id: 'task-4', text: 'Prepare pipeline slides for weekly Monday startup sync', completed: true, dueDate: 'Done', priority: PRIORITIES.MEDIUM },
-  { id: 'task-5', text: 'Conduct initial qualification call with Neon DB team', completed: false, dueDate: 'Next week', priority: PRIORITIES.LOW }
+  { id: 'task-5', text: 'Conduct initial qualification call with Neon DB team', completed: false, dueDate: 'Next week', priority: PRIORITIES.LOW },
 ];
 
-/**
- * LeadProvider Component
- * Context provider wrapping the application node to establish global lead lists and workflows.
- * 
- * @param {Object} props - Component properties.
- * @param {React.ReactNode} props.children - Child elements.
- * @returns {React.JSX.Element}
- */
 export const LeadProvider = ({ children }) => {
-  const [leads, setLeads] = useLocalStorage('startup-crm-leads', sampleLeads);
+  const { isAuthenticated } = useAuth();
+  
+  // API State
+  const [leads, setLeads] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
+  const [error, setError] = useState(null);
 
+  // Task management (persisted locally)
   const [tasks, setTasks] = useState(() => {
     const saved = localStorage.getItem('crm_tasks');
     return saved ? JSON.parse(saved) : initialTasks;
   });
-
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLead, setSelectedLead] = useState(null);
 
@@ -58,19 +37,53 @@ export const LeadProvider = ({ children }) => {
     localStorage.setItem('crm_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
-  /**
-   * Adds a new lead to the CRM database.
-   * Generates a unique ID and appends a createdAt timestamp automatically.
-   * 
-   * @param {Omit<Lead, 'id' | 'createdAt'>} leadData - Lead field details.
-   */
-  const addLead = useCallback((leadData) => {
+  // Fetch leads from backend
+  const fetchLeads = useCallback(async (params = {}) => {
+    if (!isAuthenticated) return;
+    setIsLoading(true);
+    try {
+      const responseData = await leadService.getLeads(params);
+      // Backend returns { success: true, data: [...], pagination: { total, page, limit, pages } }
+      const normalized = (responseData.data || []).map(lead => ({
+        ...lead,
+        stage: lead.status || lead.stage
+      }));
+      setLeads(normalized);
+      if (responseData.pagination) {
+        setPagination({
+          page: responseData.pagination.page,
+          limit: responseData.pagination.limit,
+          total: responseData.pagination.total,
+          totalPages: responseData.pagination.pages
+        });
+      }
+      setError(null);
+    } catch (e) {
+      console.error(e);
+      const errorMsg = e.response?.data?.message || e.message || 'Failed to load leads';
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setIsLoading(true); // Keep loading state or set false? Should be false when done
+      setIsLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  // Load leads when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchLeads();
+    } else {
+      setLeads([]);
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, fetchLeads]);
+
+  // Add lead
+  const addLead = useCallback(async (leadData) => {
     const statusVal = leadData.status || leadData.stage || LEAD_STAGES.NEW;
-    const newLead = {
-      id: `lead-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      createdAt: new Date().toISOString(),
-      history: [{ id: `h-${Date.now()}`, type: 'create', text: 'Lead created', time: new Date().toISOString() }],
-      notes: leadData.notes || '',
+    const payload = {
+      ...leadData,
       status: statusVal,
       stage: statusVal,
       priority: leadData.priority || PRIORITIES.MEDIUM,
@@ -78,222 +91,144 @@ export const LeadProvider = ({ children }) => {
       owner: leadData.owner || DEFAULT_LEAD_OWNER,
       source: leadData.source || 'Other',
       value: leadData.value !== undefined ? Number(leadData.value) : 0,
-      ...leadData
     };
-    setLeads((prev) => [newLead, ...prev]);
-  }, [setLeads]);
-
-  /**
-   * Updates an existing lead in the CRM database.
-   * 
-   * @param {Lead} updatedLeadData - The modified lead information.
-   */
-  const updateLead = useCallback((updatedLeadData) => {
-    const statusVal = updatedLeadData.status || updatedLeadData.stage;
-    setLeads((prevLeads) =>
-      prevLeads.map((lead) => {
-        if (lead.id === updatedLeadData.id) {
-          const timestamp = new Date().toISOString();
-          const historyEntry = {
-            id: `h-${Date.now()}`,
-            type: 'edit',
-            text: 'Lead details updated',
-            time: timestamp
-          };
-          const updated = {
-            ...lead,
-            ...updatedLeadData,
-            status: statusVal || lead.status,
-            stage: statusVal || lead.stage,
-            history: [historyEntry, ...(lead.history || [])]
-          };
-          if (selectedLead && selectedLead.id === lead.id) {
-            setSelectedLead(updated);
-          }
-          return updated;
-        }
-        return lead;
-      })
-    );
-  }, [setLeads, selectedLead]);
-
-  /**
-   * Deletes a lead by ID.
-   * 
-   * @param {string} leadId - The unique lead identifier.
-   */
-  const deleteLead = useCallback((leadId) => {
-    setLeads((prev) => prev.filter((lead) => lead.id !== leadId));
-    if (selectedLead && selectedLead.id === leadId) {
-      setSelectedLead(null);
+    try {
+      const responseData = await leadService.createLead(payload);
+      const newLead = responseData.data ? { ...responseData.data, stage: responseData.data.status || responseData.data.stage } : null;
+      if (newLead) {
+        setLeads((prev) => [newLead, ...prev]);
+      }
+      toast.success(responseData.message || 'Lead created successfully');
+    } catch (e) {
+      console.error(e);
+      const errorMsg = e.response?.data?.message || e.message || 'Failed to create lead';
+      toast.error(errorMsg);
     }
-  }, [setLeads, selectedLead]);
+  }, []);
 
-  /**
-   * Fetches a lead by its unique identifier.
-   * 
-   * @param {string} leadId - The unique lead identifier.
-   * @returns {Lead | undefined} The matched lead object or undefined.
-   */
+  // Update lead - supports both signatures: updateLead(id, data) and updateLead(updatedLeadObject)
+  const updateLead = useCallback(async (idOrObject, dataPayload) => {
+    let id;
+    let payload;
+
+    if (typeof idOrObject === 'object' && idOrObject !== null) {
+      id = idOrObject.id || idOrObject._id;
+      payload = idOrObject;
+    } else {
+      id = idOrObject;
+      payload = dataPayload;
+    }
+
+    try {
+      const responseData = await leadService.updateLead(id, payload);
+      const updated = responseData.data ? { ...responseData.data, stage: responseData.data.status || responseData.data.stage } : null;
+      if (updated) {
+        setLeads((prev) => prev.map((l) => (l.id === id || l._id === id ? updated : l)));
+        if (selectedLead && (selectedLead.id === id || selectedLead._id === id)) {
+          setSelectedLead(updated);
+        }
+      }
+      toast.success(responseData.message || 'Lead updated successfully');
+    } catch (e) {
+      console.error(e);
+      const errorMsg = e.response?.data?.message || e.message || 'Failed to update lead';
+      toast.error(errorMsg);
+    }
+  }, [selectedLead]);
+
+  // Delete lead
+  const deleteLead = useCallback(async (leadId) => {
+    try {
+      const responseData = await leadService.deleteLead(leadId);
+      setLeads((prev) => prev.filter((l) => l.id !== leadId && l._id !== leadId));
+      if (selectedLead && (selectedLead.id === leadId || selectedLead._id === leadId)) {
+        setSelectedLead(null);
+      }
+      toast.success(responseData.message || 'Lead deleted successfully');
+    } catch (e) {
+      console.error(e);
+      const errorMsg = e.response?.data?.message || e.message || 'Failed to delete lead';
+      toast.error(errorMsg);
+    }
+  }, [selectedLead]);
+
   const getLeadById = useCallback((leadId) => {
-    return leads.find((lead) => lead.id === leadId);
+    return leads.find((l) => l.id === leadId || l._id === leadId);
   }, [leads]);
 
-  /**
-   * Updates a lead's qualification pipeline stage.
-   * 
-   * @param {string} leadId - The unique lead identifier.
-   * @param {string} nextStage - The next funnel stage value.
-   */
-  const updateLeadStage = useCallback((leadId, nextStage) => {
-    setLeads((prevLeads) =>
-      prevLeads.map((lead) => {
-        if (lead.id === leadId) {
-          const timestamp = new Date().toISOString();
-          const historyEntry = {
-            id: `h-${Date.now()}`,
-            type: 'status',
-            text: `Stage updated to ${nextStage}`,
-            time: timestamp
-          };
-          const updatedLead = {
-            ...lead,
-            stage: nextStage,
-            status: nextStage,
-            history: [historyEntry, ...(lead.history || [])]
-          };
-          if (selectedLead && selectedLead.id === leadId) {
-            setSelectedLead(updatedLead);
-          }
-          return updatedLead;
+  // Fast drag & drop / stage change
+  const updateLeadStage = useCallback(async (leadId, nextStage) => {
+    try {
+      const responseData = await leadService.updateLeadStatus(leadId, nextStage);
+      const updated = responseData.data ? { ...responseData.data, stage: responseData.data.status || responseData.data.stage } : null;
+      if (updated) {
+        setLeads((prev) => prev.map((l) => (l.id === leadId || l._id === leadId ? updated : l)));
+        if (selectedLead && (selectedLead.id === leadId || selectedLead._id === leadId)) {
+          setSelectedLead(updated);
         }
-        return lead;
-      })
-    );
-  }, [setLeads, selectedLead]);
+      }
+      toast.success(responseData.message || 'Lead status updated');
+    } catch (e) {
+      console.error(e);
+      const errorMsg = e.response?.data?.message || e.message || 'Failed to update status';
+      toast.error(errorMsg);
+    }
+  }, [selectedLead]);
 
-  /**
-   * Appends an updates/comments log inside a lead's historical activities feed.
-   * 
-   * @param {string} leadId - The unique lead identifier.
-   * @param {string} commentText - The comments content.
-   */
-  const addLeadComment = useCallback((leadId, commentText) => {
-    setLeads((prevLeads) =>
-      prevLeads.map((lead) => {
-        if (lead.id === leadId) {
-          const timestamp = new Date().toISOString();
-          const historyEntry = {
-            id: `h-${Date.now()}`,
-            type: 'note',
-            text: commentText,
-            time: timestamp
-          };
-          const updatedLead = {
-            ...lead,
-            history: [historyEntry, ...(lead.history || [])]
-          };
-          if (selectedLead && selectedLead.id === leadId) {
-            setSelectedLead(updatedLead);
-          }
-          return updatedLead;
-        }
-        return lead;
-      })
-    );
-  }, [setLeads, selectedLead]);
+  // Add timeline note
+  const addLeadComment = useCallback(async (leadId, comment) => {
+    const lead = getLeadById(leadId);
+    if (!lead) return;
+    const historyEntry = { id: `h-${Date.now()}`, type: 'note', text: comment, time: new Date().toISOString() };
+    const updatedHistory = [historyEntry, ...(lead.history || [])];
+    await updateLead(leadId, { history: updatedHistory });
+  }, [getLeadById, updateLead]);
 
-  /**
-   * Adds a new check-item task.
-   * 
-   * @param {string} text - Task descriptions.
-   * @param {string} [priority] - Task priority rating.
-   * @param {string} [dueDate] - Task target schedule.
-   */
+  // Task helpers
   const addTask = useCallback((text, priority = PRIORITIES.MEDIUM, dueDate = 'Today') => {
-    const newTask = {
-      id: `task-${Date.now()}`,
-      text,
-      completed: false,
-      priority,
-      dueDate
-    };
+    const newTask = { id: `task-${Date.now()}`, text, completed: false, priority, dueDate };
     setTasks((prev) => [newTask, ...prev]);
   }, []);
 
-  /**
-   * Toggles task completion status.
-   * 
-   * @param {string} taskId - Unique task ID.
-   */
   const toggleTask = useCallback((taskId) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    );
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)));
   }, []);
 
-  /**
-   * Deletes a check-item task.
-   * 
-   * @param {string} taskId - Unique task ID.
-   */
   const deleteTask = useCallback((taskId) => {
-    setTasks((prev) => prev.filter((task) => task.id !== taskId));
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
   }, []);
 
-  // Memoize Provider value
-  const contextValue = useMemo(() => ({
-    leads,
-    tasks,
-    searchQuery,
-    selectedLead,
-    setSearchQuery,
-    setSelectedLead,
-    addLead,
-    updateLead,
-    deleteLead,
-    getLeadById,
-    updateLeadStage,
-    addLeadComment,
-    addTask,
-    toggleTask,
-    deleteTask
-  }), [
-    leads,
-    tasks,
-    searchQuery,
-    selectedLead,
-    addLead,
-    updateLead,
-    deleteLead,
-    getLeadById,
-    updateLeadStage,
-    addLeadComment,
-    addTask,
-    toggleTask,
-    deleteTask
-  ]);
-
-  return (
-    <LeadContext.Provider value={contextValue}>
-      {children}
-    </LeadContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      leads,
+      isLoading,
+      loading: isLoading, // backwards compatibility
+      pagination,
+      error,
+      tasks,
+      searchQuery,
+      selectedLead,
+      setSearchQuery,
+      setSelectedLead,
+      fetchLeads,
+      addLead,
+      updateLead,
+      deleteLead,
+      getLeadById,
+      updateLeadStage,
+      addLeadComment,
+      addTask,
+      toggleTask,
+      deleteTask,
+    }),
+    [leads, isLoading, pagination, error, tasks, searchQuery, selectedLead, fetchLeads, addLead, updateLead, deleteLead, getLeadById, updateLeadStage, addLeadComment, addTask, toggleTask, deleteTask]
   );
+
+  return <LeadContext.Provider value={contextValue}>{children}</LeadContext.Provider>;
 };
 
-/**
- * useLeads Custom Hook
- * Custom consumer hook fetching leads contextual value states and CRUD mutation triggers.
- * 
- * @returns {Object} Leads context properties and mutations.
- * @throws {Error} If context is used outside a LeadProvider.
- */
 export const useLeads = () => {
-  const context = useContext(LeadContext);
-  if (!context) {
-    throw new Error('useLeads must be used within a LeadProvider');
-  }
-  return context;
+  const ctx = useContext(LeadContext);
+  if (!ctx) throw new Error('useLeads must be used within a LeadProvider');
+  return ctx;
 };

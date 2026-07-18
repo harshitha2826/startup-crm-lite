@@ -74,7 +74,7 @@ const LeadTable = ({ leads = [], onEdit, onDelete }) => {
                   
                   {/* Status Badge */}
                   <td className="py-3.5 px-5">
-                    <StatusBadge status={lead.stage} />
+                    <StatusBadge status={lead.status || lead.stage} />
                   </td>
                   
                   {/* Email */}

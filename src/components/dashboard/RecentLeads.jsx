@@ -75,7 +75,7 @@ const RecentLeads = ({ leads = [], onSelectLead }) => {
                   <td className="py-3 px-4 text-gray-500 dark:text-gray-400">{lead.company}</td>
                   <td className="py-3 px-4">
                     {/* Badge primitive mapping styling variables automatically */}
-                    <Badge>{lead.stage}</Badge>
+                    <Badge>{lead.status || lead.stage}</Badge>
                   </td>
                   <td className="py-3 px-4 text-right text-gray-500 dark:text-gray-400 font-medium">
                     {formatDate(lead.createdAt)}

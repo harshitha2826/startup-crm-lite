@@ -67,7 +67,7 @@ const LeadCard = ({ lead, onEdit, onDelete }) => {
         <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
           {lead.name}
         </span>
-        <StatusBadge status={lead.stage} />
+        <StatusBadge status={lead.status || lead.stage} />
       </div>
 
       {/* Body Details: Email and Phone */}

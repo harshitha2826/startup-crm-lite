@@ -1,16 +1,25 @@
-// Import BrowserRouter from react-router-dom to enable HTML5 History API routing
-import { BrowserRouter } from 'react-router-dom';
-// Import global UI structure shell (comprising sticky header and right sliding drawers)
-import Layout from './components/common/Layout';
-// Import modular routes engine containing the dynamic lazy loading split declarations
 import AppRoutes from './routes';
 import { Toaster } from 'react-hot-toast';
+import { useAuth } from './context/AuthContext';
 
 /**
  * Root Application Component
- * Wraps the app hierarchy inside Context Providers and React Router interfaces.
+ * Resolves authentication loading fallback and mounts routing pages.
  */
 function App() {
+  const { isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center w-screen h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+          <span className="text-sm text-muted font-medium">Verifying session...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Toaster 
@@ -25,19 +34,7 @@ function App() {
           },
         }}
       />
-      
-      {/* 2. Instantiate HTML5 History API routing provider */}
-      <BrowserRouter>
-        
-        {/* 3. Wrap canvas in Layout layout (Sidebar navigations, Top Global Bar) */}
-        <Layout>
-          
-          {/* 4. Mount dynamic lazy-loaded page route slots */}
-          <AppRoutes />
-          
-        </Layout>
-        
-      </BrowserRouter>
+      <AppRoutes />
     </>
   );
 }

@@ -29,7 +29,7 @@ const LeadForm = ({ initialData = null, onSubmit, onCancel }) => {
     company: initialData?.company || '',
     email: initialData?.email || '',
     phone: initialData?.phone || '',
-    stage: initialData?.stage || LEAD_STAGES.NEW,
+    stage: initialData?.status || initialData?.stage || LEAD_STAGES.NEW,
     source: initialData?.source || LEAD_SOURCES.WEBSITE,
     value: initialData?.value !== undefined ? initialData.value : '',
     notes: initialData?.notes || '',

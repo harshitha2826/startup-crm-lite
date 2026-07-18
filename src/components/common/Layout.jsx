@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useLocation, NavLink } from 'react-router-dom';
 import { useLeads } from '../../context/LeadContext';
+import { LEAD_STAGE_OPTIONS } from '../../constants';
+import { useAuth } from '../../context/AuthContext';
 import Badge from './Badge';
 import Button from './Button';
 import Sidebar from './Sidebar';
@@ -21,10 +23,12 @@ import {
   MessageSquare,
   LayoutDashboard,
   Users,
-  BarChart3
+  BarChart3,
+  LogOut
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
+  const { user, logout } = useAuth();
   const {
     selectedLead,
     setSelectedLead,
@@ -128,11 +132,27 @@ const Layout = ({ children }) => {
 
             <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
             
-            {/* Quick User Avatar */}
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs">
-                AR
+            {/* Quick User Avatar & Logout */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs"
+                  title={user?.email || 'User Profile'}
+                >
+                  {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
+                </div>
+                <span className="hidden lg:block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  {user?.name || 'User'}
+                </span>
               </div>
+              <button
+                onClick={logout}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-danger hover:bg-danger/10 dark:text-gray-400 dark:hover:text-danger dark:hover:bg-danger/10 cursor-pointer transition-colors"
+                title="Log Out"
+                aria-label="Log Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </header>
@@ -287,16 +307,15 @@ const Layout = ({ children }) => {
                   <div>
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Lead Stage</label>
                     <select
-                      value={selectedLead.stage}
+                      value={selectedLead.stage || selectedLead.status}
                       onChange={(e) => updateLeadStage(selectedLead.id, e.target.value)}
                       className="w-full h-9 px-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:border-primary"
                     >
-                      <option value="New">New</option>
-                      <option value="Contacted">Contacted</option>
-                      <option value="Demo Scheduled">Demo Scheduled</option>
-                      <option value="Proposal Sent">Proposal Sent</option>
-                      <option value="Closed Won">Closed Won</option>
-                      <option value="Closed Lost">Closed Lost</option>
+                      {LEAD_STAGE_OPTIONS.map((stage) => (
+                        <option key={stage} value={stage}>
+                          {stage}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
