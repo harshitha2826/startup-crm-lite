@@ -113,10 +113,15 @@ export const LeadProvider = ({ children }) => {
 
     if (typeof idOrObject === 'object' && idOrObject !== null) {
       id = idOrObject.id || idOrObject._id;
-      payload = idOrObject;
+      payload = { ...idOrObject };
     } else {
       id = idOrObject;
-      payload = dataPayload;
+      payload = { ...dataPayload };
+    }
+
+    // Map frontend 'stage' to backend 'status' so Mongoose can save it properly
+    if (payload.stage !== undefined) {
+      payload.status = payload.stage;
     }
 
     try {
