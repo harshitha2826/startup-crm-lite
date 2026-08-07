@@ -10,7 +10,6 @@ import {
   CheckCircle, 
   DollarSign 
 } from 'lucide-react';
-
 /**
  * Static sample data defining fallbacks for CRM leads.
  * Declared inside Dashboard.jsx to fulfill Phase-specific isolation requirements.

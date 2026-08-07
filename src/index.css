@@ -2,8 +2,25 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
+/* ─── Brand Design Tokens ───────────────────────────────────────────────────── */
+/*
+ * Brand palette:
+ * Light: Background #F8FAFC | Surface #EDF2F7 | Primary #3B5CCC | Secondary #5E81F4
+ *        Accent #FF8F5A | Text #1A2330 | Border #D9E2EF
+ * Dark:  Background #111827 | Surface #1B2435 | Primary #6C8DFF | Secondary #9EB4FF
+ *        Accent #FFA26E | Text #F8FAFC | Border #2E3A52
+ *
+ * Strategy: Use @theme inline to selectively remap ONLY the Tailwind gray tokens
+ * that differ from our brand. Key insight — do NOT remap gray-50 (#f8fafc = brand bg),
+ * gray-900 (#111827 = brand dark bg), or "white" (used for text-white in dark mode).
+ * Only remap gray-100, gray-200, gray-700, gray-800 where TW defaults diverge from brand.
+ */
+
+@theme inline {
+  /* ── Semantic brand tokens ── */
   --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -13,36 +30,60 @@
   --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);
   --color-muted: var(--muted);
+
+  /* ── Selective gray remaps ──
+     Only override tokens where Tailwind defaults don't match brand.
+     • gray-50  = #f8fafc → brand light bg = #f8fafc  ✓ already matches
+     • gray-900 = #111827 → brand dark bg  = #111827  ✓ already matches
+     • white               → intentionally NOT remapped (text-white must stay white)
+  */
+  --color-gray-100: var(--card);       /* TW #f3f4f6 → brand surface #edf2f7 / #1b2435 */
+  --color-gray-200: var(--border);     /* TW #e5e7eb → brand border  #d9e2ef / #2e3a52 */
+  --color-gray-700: var(--border);     /* TW #374151 → brand border  #d9e2ef / #2e3a52 */
+  --color-gray-800: var(--card);       /* TW #1f2937 → brand surface #edf2f7 / #1b2435 */
+
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
+/* ─── Light Mode CSS Variables ──────────────────────────────────────────────── */
 :root {
   --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --border: #e2e8f0;
-  --primary: #2563eb;
+  --foreground: #1a2330;
+  --card: #edf2f7;
+  --card-foreground: #1a2330;
+  --border: #d9e2ef;
+  --primary: #3b5ccc;
+  --secondary: #5e81f4;
+  --accent: #ff8f5a;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
   --muted: #64748b;
+
+  --scrollbar-thumb: rgba(91, 112, 155, 0.25);
+  --scrollbar-thumb-hover: rgba(59, 92, 204, 0.35);
 }
 
+/* ─── Dark Mode CSS Variables ───────────────────────────────────────────────── */
 .dark {
-  --background: #0b0f19;
-  --foreground: #f9fafb;
-  --card: #111827;
-  --card-foreground: #f9fafb;
-  --border: #1f2937;
-  --primary: #3b82f6;
+  --background: #111827;
+  --foreground: #f8fafc;
+  --card: #1b2435;
+  --card-foreground: #f8fafc;
+  --border: #2e3a52;
+  --primary: #6c8dff;
+  --secondary: #9eb4ff;
+  --accent: #ffa26e;
   --success: #4ade80;
   --warning: #fbbf24;
   --danger: #f87171;
   --muted: #9ca3af;
+
+  --scrollbar-thumb: rgba(108, 141, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(108, 141, 255, 0.30);
 }
 
-/* Base Styles */
+/* ─── Base Styles ───────────────────────────────────────────────────────────── */
 html, body {
   margin: 0;
   padding: 0;
@@ -62,7 +103,7 @@ html, body {
   flex-direction: column;
 }
 
-/* Custom Scrollbar styling (Linear & Stripe inspired) */
+/* ─── Custom Scrollbar (brand-colored) ──────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -73,23 +114,15 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.2);
+  background: var(--scrollbar-thumb);
   border-radius: 9999px;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.15);
-}
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.4);
+  background: var(--scrollbar-thumb-hover);
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.3);
-}
-
-/* Subtle Pulse for Active Status Dot */
+/* ─── Animations ────────────────────────────────────────────────────────────── */
 @keyframes statusPulse {
   0%, 100% {
     opacity: 1;
@@ -105,22 +138,24 @@ html, body {
   animation: statusPulse 2s infinite ease-in-out;
 }
 
-/* Glassmorphism utility */
+/* ─── Glassmorphism Utility ─────────────────────────────────────────────────── */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(237, 242, 247, 0.65);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid rgba(217, 226, 239, 0.75);
 }
 
 .dark .glass-panel {
-  background: rgba(17, 24, 39, 0.7);
+  background: rgba(27, 36, 53, 0.65);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(31, 41, 55, 0.7);
+  border: 1px solid rgba(46, 58, 82, 0.7);
 }
 
-/* Exclude text color from transition animations to ensure instant text updates while backgrounds transition smoothly */
+/* ─── Transition Optimization ───────────────────────────────────────────────── */
+/* Exclude text-color from transitions so text swaps instantly
+   while backgrounds/borders animate smoothly */
 .transition-colors,
 .transition-all,
 .transition,

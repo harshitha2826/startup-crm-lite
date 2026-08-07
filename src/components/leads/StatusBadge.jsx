@@ -20,13 +20,13 @@ const StatusBadge = ({ status, className = '' }) => {
 
     switch (normalized) {
       case 'new':
-        return 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/25';
+        return 'bg-muted/10 text-muted border-muted/25';
       case 'contacted':
-        return 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25';
+        return 'bg-primary/10 text-primary border-primary/25';
       case 'meeting scheduled':
-        return 'bg-warning/10 text-warning border-warning/25';
+        return 'bg-accent/10 text-accent border-accent/25';
       case 'proposal sent':
-        return 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/25';
+        return 'bg-secondary/10 text-secondary border-secondary/25';
       case 'won':
         return 'bg-success/10 text-success border-success/25';
       case 'lost':
