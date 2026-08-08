@@ -13,7 +13,12 @@ const ThemeContext = createContext(null);
  * @returns {React.JSX.Element}
  */
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useLocalStorage('startup-crm-theme', false);
+  const [isDarkMode, setIsDarkMode] = useLocalStorage('startup-crm-theme', () => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
 
   // Keep theme class synced
   useEffect(() => {

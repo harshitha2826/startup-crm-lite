@@ -25,8 +25,10 @@ const isStorageAvailable = typeof window !== 'undefined' && (() => {
 const useLocalStorage = (key, initialValue) => {
   // 1. Initial State Load (Lazy Initialization)
   const [storedValue, setStoredValue] = useState(() => {
+    const initial = typeof initialValue === 'function' ? initialValue() : initialValue;
+    
     if (!isStorageAvailable) {
-      return initialValue;
+      return initial;
     }
 
     try {
@@ -34,10 +36,10 @@ const useLocalStorage = (key, initialValue) => {
       if (item !== null) {
         return JSON.parse(item);
       }
-      return initialValue;
+      return initial;
     } catch (error) {
       console.warn(`Error parsing localStorage key "${key}":`, error);
-      return initialValue;
+      return initial;
     }
   });
 
