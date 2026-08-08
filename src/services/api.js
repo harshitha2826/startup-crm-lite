@@ -1,11 +1,16 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Create configured Axios instance
+// Determine API base URL: Force relative path on Vercel deployments to route to Vercel Serverless Functions
+const getBaseURL = () => {
+  if (typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app')) {
+    return '';
+  }
+  return import.meta.env.VITE_API_URL || '';
+};
+
 const api = axios.create({
-  // When VITE_API_URL is set (e.g. in production), use it as the absolute base.
-  // When not set (local dev), use empty string — Vite proxy forwards /api/* to backend.
-  baseURL: import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : '',
+  baseURL: getBaseURL(),
 });
 
 // Request Interceptor: Automatically attach the JWT token if present
